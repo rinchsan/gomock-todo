@@ -1,3 +1,5 @@
 # gomock-todo
 
-Sample Todo Application written in Go
+```shell script
+go test ./...
+```
