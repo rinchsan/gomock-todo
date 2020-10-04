@@ -1,4 +1,4 @@
-package user
+package user_test
 
 import (
 	"net/http"
@@ -8,8 +8,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
+	"github.com/rinchsan/gomock-todo/cmd/api/adapter/user"
 	"github.com/rinchsan/gomock-todo/pkg/entity"
-	"github.com/rinchsan/gomock-todo/pkg/registry"
 	"github.com/rinchsan/gomock-todo/pkg/repository/mock"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,47 +18,51 @@ func TestHandler_Update(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
-		setup func(ctrl *gomock.Controller) handler
+		setup func(ctrl *gomock.Controller) user.Handler
 		body  string
 		code  int
 	}{
 		"invalid json body": {
-			setup: func(ctrl *gomock.Controller) handler {
-				h := newHandler(registry.NewMockRepository(ctrl))
-				return h
+			setup: func(ctrl *gomock.Controller) user.Handler {
+				userRepo := mock.NewUser(ctrl)
+				todoRepo := mock.NewTodo(ctrl)
+				return user.NewHandler(userRepo, todoRepo)
 			},
 			body: `{{}`,
 			code: http.StatusBadRequest,
 		},
 		"repository.User.GetByID returns error": {
-			setup: func(ctrl *gomock.Controller) handler {
-				h := newHandler(registry.NewMockRepository(ctrl))
-				h.user.(*mock.User).EXPECT().GetByID(gomock.Any(), uint64(1)).Return(nil, errors.New("test error"))
-				return h
+			setup: func(ctrl *gomock.Controller) user.Handler {
+				userRepo := mock.NewUser(ctrl)
+				todoRepo := mock.NewTodo(ctrl)
+				userRepo.EXPECT().GetByID(gomock.Any(), uint64(1)).Return(nil, errors.New("test error"))
+				return user.NewHandler(userRepo, todoRepo)
 			},
 			body: `{"id":1, "username":"rinchsan"}`,
 			code: http.StatusInternalServerError,
 		},
 		"repository.User.Update returns error": {
-			setup: func(ctrl *gomock.Controller) handler {
-				h := newHandler(registry.NewMockRepository(ctrl))
-				user := &entity.User{ID: 1}
-				h.user.(*mock.User).EXPECT().GetByID(gomock.Any(), uint64(1)).Return(user, nil)
-				user.Username = "rinchsan"
-				h.user.(*mock.User).EXPECT().Update(gomock.Any(), user).Return(errors.New("test error"))
-				return h
+			setup: func(ctrl *gomock.Controller) user.Handler {
+				userRepo := mock.NewUser(ctrl)
+				todoRepo := mock.NewTodo(ctrl)
+				userEntity := &entity.User{ID: 1}
+				userRepo.EXPECT().GetByID(gomock.Any(), uint64(1)).Return(userEntity, nil)
+				userEntity.Username = "rinchsan"
+				userRepo.EXPECT().Update(gomock.Any(), userEntity).Return(errors.New("test error"))
+				return user.NewHandler(userRepo, todoRepo)
 			},
 			body: `{"id":1, "username":"rinchsan"}`,
 			code: http.StatusInternalServerError,
 		},
 		"repository.User.Update succeeds": {
-			setup: func(ctrl *gomock.Controller) handler {
-				h := newHandler(registry.NewMockRepository(ctrl))
-				user := &entity.User{ID: 1}
-				h.user.(*mock.User).EXPECT().GetByID(gomock.Any(), uint64(1)).Return(user, nil)
-				user.Username = "rinchsan"
-				h.user.(*mock.User).EXPECT().Update(gomock.Any(), user).Return(nil)
-				return h
+			setup: func(ctrl *gomock.Controller) user.Handler {
+				userRepo := mock.NewUser(ctrl)
+				todoRepo := mock.NewTodo(ctrl)
+				userEntity := &entity.User{ID: 1}
+				userRepo.EXPECT().GetByID(gomock.Any(), uint64(1)).Return(userEntity, nil)
+				userEntity.Username = "rinchsan"
+				userRepo.EXPECT().Update(gomock.Any(), userEntity).Return(nil)
+				return user.NewHandler(userRepo, todoRepo)
 			},
 			body: `{"id":1, "username":"rinchsan"}`,
 			code: http.StatusOK,

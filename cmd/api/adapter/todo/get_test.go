@@ -1,4 +1,4 @@
-package todo
+package todo_test
 
 import (
 	"net/http"
@@ -7,8 +7,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
+	"github.com/rinchsan/gomock-todo/cmd/api/adapter/todo"
 	"github.com/rinchsan/gomock-todo/pkg/entity"
-	"github.com/rinchsan/gomock-todo/pkg/registry"
 	"github.com/rinchsan/gomock-todo/pkg/repository/mock"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,22 +17,24 @@ func TestHandler_GetAll(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
-		setup func(ctrl *gomock.Controller) handler
+		setup func(ctrl *gomock.Controller) todo.Handler
 		code  int
 	}{
 		"repository.Todo.GetAll returns error": {
-			setup: func(ctrl *gomock.Controller) handler {
-				h := newHandler(registry.NewMockRepository(ctrl))
-				h.todo.(*mock.Todo).EXPECT().GetAll(gomock.Any()).Return(nil, errors.New("test error"))
-				return h
+			setup: func(ctrl *gomock.Controller) todo.Handler {
+				userRepo := mock.NewUser(ctrl)
+				todoRepo := mock.NewTodo(ctrl)
+				todoRepo.EXPECT().GetAll(gomock.Any()).Return(nil, errors.New("test error"))
+				return todo.NewHandler(userRepo, todoRepo)
 			},
 			code: http.StatusInternalServerError,
 		},
 		"repository.Todo.GetAll succeeds": {
-			setup: func(ctrl *gomock.Controller) handler {
-				h := newHandler(registry.NewMockRepository(ctrl))
-				h.todo.(*mock.Todo).EXPECT().GetAll(gomock.Any()).Return(entity.TodoSlice{}, nil)
-				return h
+			setup: func(ctrl *gomock.Controller) todo.Handler {
+				userRepo := mock.NewUser(ctrl)
+				todoRepo := mock.NewTodo(ctrl)
+				todoRepo.EXPECT().GetAll(gomock.Any()).Return(entity.TodoSlice{}, nil)
+				return todo.NewHandler(userRepo, todoRepo)
 			},
 			code: http.StatusOK,
 		},

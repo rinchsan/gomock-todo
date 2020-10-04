@@ -1,4 +1,4 @@
-package todo
+package todo_test
 
 import (
 	"net/http"
@@ -9,8 +9,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
+	"github.com/rinchsan/gomock-todo/cmd/api/adapter/todo"
 	"github.com/rinchsan/gomock-todo/pkg/entity"
-	"github.com/rinchsan/gomock-todo/pkg/registry"
 	"github.com/rinchsan/gomock-todo/pkg/repository/mock"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,53 +19,57 @@ func TestHandler_Update(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
-		setup func(ctrl *gomock.Controller) handler
+		setup func(ctrl *gomock.Controller) todo.Handler
 		body  string
 		code  int
 	}{
 		"invalid json body": {
-			setup: func(ctrl *gomock.Controller) handler {
-				h := newHandler(registry.NewMockRepository(ctrl))
-				return h
+			setup: func(ctrl *gomock.Controller) todo.Handler {
+				userRepo := mock.NewUser(ctrl)
+				todoRepo := mock.NewTodo(ctrl)
+				return todo.NewHandler(userRepo, todoRepo)
 			},
 			body: `{{}`,
 			code: http.StatusBadRequest,
 		},
 		"repository.Todo.GetByID returns error": {
-			setup: func(ctrl *gomock.Controller) handler {
-				h := newHandler(registry.NewMockRepository(ctrl))
-				h.todo.(*mock.Todo).EXPECT().GetByID(gomock.Any(), uint64(1)).Return(nil, errors.New("test error"))
-				return h
+			setup: func(ctrl *gomock.Controller) todo.Handler {
+				userRepo := mock.NewUser(ctrl)
+				todoRepo := mock.NewTodo(ctrl)
+				todoRepo.EXPECT().GetByID(gomock.Any(), uint64(1)).Return(nil, errors.New("test error"))
+				return todo.NewHandler(userRepo, todoRepo)
 			},
 			body: `{"id":1, "title":"new title", "detail":"new detail", "due_date":"2020-08-31T00:00:00Z", "author_user_id":3, "assignee_user_ids":[2, 3]}`,
 			code: http.StatusInternalServerError,
 		},
 		"repository.Todo.Update returns error": {
-			setup: func(ctrl *gomock.Controller) handler {
-				h := newHandler(registry.NewMockRepository(ctrl))
-				todo := &entity.Todo{ID: 1}
-				h.todo.(*mock.Todo).EXPECT().GetByID(gomock.Any(), uint64(1)).Return(todo, nil)
-				todo.Title = "todo title"
-				todo.Detail = "todo detail"
-				todo.AuthorUserID = 3
-				todo.DueDate = time.Date(2020, time.August, 31, 0, 0, 0, 0, time.UTC)
-				h.todo.(*mock.Todo).EXPECT().Update(gomock.Any(), todo, []uint64{2, 3}).Return(errors.New("test error"))
-				return h
+			setup: func(ctrl *gomock.Controller) todo.Handler {
+				userRepo := mock.NewUser(ctrl)
+				todoRepo := mock.NewTodo(ctrl)
+				todoEntity := &entity.Todo{ID: 1}
+				todoRepo.EXPECT().GetByID(gomock.Any(), uint64(1)).Return(todoEntity, nil)
+				todoEntity.Title = "todo title"
+				todoEntity.Detail = "todo detail"
+				todoEntity.AuthorUserID = 3
+				todoEntity.DueDate = time.Date(2020, time.August, 31, 0, 0, 0, 0, time.UTC)
+				todoRepo.EXPECT().Update(gomock.Any(), todoEntity, []uint64{2, 3}).Return(errors.New("test error"))
+				return todo.NewHandler(userRepo, todoRepo)
 			},
 			body: `{"id":1, "title":"new title", "detail":"new detail", "due_date":"2020-08-31T00:00:00Z", "author_user_id":3, "assignee_user_ids":[2, 3]}`,
 			code: http.StatusInternalServerError,
 		},
 		"repository.Todo.Update succeeds": {
-			setup: func(ctrl *gomock.Controller) handler {
-				h := newHandler(registry.NewMockRepository(ctrl))
-				todo := &entity.Todo{ID: 1}
-				h.todo.(*mock.Todo).EXPECT().GetByID(gomock.Any(), uint64(1)).Return(todo, nil)
-				todo.Title = "todo title"
-				todo.Detail = "todo detail"
-				todo.AuthorUserID = 3
-				todo.DueDate = time.Date(2020, time.August, 31, 0, 0, 0, 0, time.UTC)
-				h.todo.(*mock.Todo).EXPECT().Update(gomock.Any(), todo, []uint64{2, 3}).Return(nil)
-				return h
+			setup: func(ctrl *gomock.Controller) todo.Handler {
+				userRepo := mock.NewUser(ctrl)
+				todoRepo := mock.NewTodo(ctrl)
+				todoEntity := &entity.Todo{ID: 1}
+				todoRepo.EXPECT().GetByID(gomock.Any(), uint64(1)).Return(todoEntity, nil)
+				todoEntity.Title = "todoEntity title"
+				todoEntity.Detail = "todoEntity detail"
+				todoEntity.AuthorUserID = 3
+				todoEntity.DueDate = time.Date(2020, time.August, 31, 0, 0, 0, 0, time.UTC)
+				todoRepo.EXPECT().Update(gomock.Any(), todoEntity, []uint64{2, 3}).Return(nil)
+				return todo.NewHandler(userRepo, todoRepo)
 			},
 			body: `{"id":1, "title":"new title", "detail":"new detail", "due_date":"2020-08-31T00:00:00Z", "author_user_id":3, "assignee_user_ids":[2, 3]}`,
 			code: http.StatusOK,
